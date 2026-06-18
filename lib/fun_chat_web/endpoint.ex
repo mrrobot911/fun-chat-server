@@ -11,6 +11,14 @@ defmodule FunChatWeb.Endpoint do
     same_site: "Lax"
   ]
 
+  socket "/socket", FunChatWeb.UserSocket,
+    websocket: [
+      timeout: 45_000,
+      compress: true,
+      max_frame_size: 1_048_576
+    ],
+    longpoll: false
+
   socket "/live", Phoenix.LiveView.Socket,
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]
