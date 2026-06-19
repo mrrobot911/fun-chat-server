@@ -36,5 +36,12 @@ defmodule FunChat.Presence do
   def online_user_ids do
     list(@topic)
     |> Map.keys()
+    |> Enum.map(fn key ->
+      case Integer.parse(key) do
+        {id, _} -> id
+        :error -> nil
+      end
+    end)
+    |> Enum.reject(&is_nil/1)
   end
 end

@@ -95,6 +95,25 @@ defmodule FunChatWeb.Handlers.MessageHandler do
     end
   end
 
+  def handle_count(payload, socket) do
+    request_id = Map.get(payload, "id")
+    Logger.log_incoming(request_id, "MSG_COUNT_NOT_READED_FROM_USER", payload)
+
+    with :ok <- AuthGuard.require_auth(socket),
+         {:ok, other_user} <- resolve_other_user(payload) do
+      count = Chat.count_unread(socket.assigns.current_user.id, other_user.id)
+
+      response =
+        Protocol.response(request_id, "MSG_COUNT_NOT_READED_FROM_USER", %{count: count})
+
+      Logger.log_outgoing(request_id, "MSG_COUNT_NOT_READED_FROM_USER", response)
+      {:reply, {:ok, response}, socket}
+    else
+      {:error, reason} when is_binary(reason) ->
+        reply_error(request_id, reason, socket)
+    end
+  end
+
   defp resolve_other_user(payload) do
     case payload do
       %{"user" => other_login} ->
