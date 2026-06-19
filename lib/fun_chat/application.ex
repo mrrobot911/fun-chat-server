@@ -12,6 +12,7 @@ defmodule FunChat.Application do
       FunChat.Repo,
       {DNSCluster, query: Application.get_env(:fun_chat, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: FunChat.PubSub},
+      FunChat.Presence,
       # Start a worker by calling: FunChat.Worker.start_link(arg)
       # {FunChat.Worker, arg},
       # Start to serve requests, typically the last entry

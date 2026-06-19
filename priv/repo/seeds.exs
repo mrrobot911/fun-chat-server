@@ -1,11 +1,18 @@
-# Script for populating the database. You can run it as:
-#
-#     mix run priv/repo/seeds.exs
-#
-# Inside the script, you can read and write to any of your
-# repositories directly:
-#
-#     FunChat.Repo.insert!(%FunChat.SomeSchema{})
-#
-# We recommend using the bang functions (`insert!`, `update!`
-# and so on) as they will fail if something goes wrong.
+alias FunChat.Accounts
+
+users = [
+  %{login: "alice", password: "alice123"},
+  %{login: "bob", password: "bob123"}
+]
+
+for attrs <- users do
+  case Accounts.get_user_by_login(attrs.login) do
+    nil ->
+      case Accounts.create_user(attrs) do
+        {:ok, _} -> IO.puts("Created: #{attrs.login}")
+        {:error, reason} -> IO.puts("Failed: #{inspect(reason)}")
+      end
+    _ ->
+      IO.puts("Exists: #{attrs.login}")
+  end
+end
