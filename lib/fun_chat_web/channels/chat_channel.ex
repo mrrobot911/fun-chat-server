@@ -58,6 +58,15 @@ defmodule FunChatWeb.ChatChannel do
   def handle_in("MSG_FROM_USER", payload, socket),
     do: FunChatWeb.Handlers.MessageHandler.handle_from_user(payload, socket)
 
+  def handle_in("MSG_READ", payload, socket),
+    do: FunChatWeb.Handlers.MessageMutationHandler.handle_read(payload, socket)
+
+  def handle_in("MSG_DELETE", payload, socket),
+    do: FunChatWeb.Handlers.MessageMutationHandler.handle_delete(payload, socket)
+
+  def handle_in("MSG_EDIT", payload, socket),
+    do: FunChatWeb.Handlers.MessageMutationHandler.handle_edit(payload, socket)
+
   def handle_in(type, payload, socket) do
     request_id = Map.get(payload, "id")
 

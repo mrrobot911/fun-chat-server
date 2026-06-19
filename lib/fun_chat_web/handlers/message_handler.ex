@@ -179,4 +179,3 @@ defmodule FunChatWeb.Handlers.MessageHandler do
     {:reply, {:ok, error}, socket}
   end
 end
-
