@@ -2,7 +2,10 @@ import Config
 
 config :fun_chat,
   ecto_repos: [FunChat.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  max_connections_per_ip: 10,
+  log_level: "ALL",
+  clear_interval: nil
 
 # Configure the endpoint
 config :fun_chat, FunChatWeb.Endpoint,

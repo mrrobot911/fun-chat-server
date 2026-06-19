@@ -3,7 +3,7 @@ defmodule FunChatWeb.Handlers.AuthHandler do
   Handler for USER_LOGIN, USER_LOGOUT and terminate logic.
   """
 
-  alias FunChat.{Accounts, Presence}
+  alias FunChat.{Accounts, Presence, RateLimiter}
   alias FunChatWeb.Protocol
   alias FunChat.Logger
 
@@ -13,41 +13,46 @@ defmodule FunChatWeb.Handlers.AuthHandler do
     request_id = Map.get(payload, "id")
     Logger.log_incoming(request_id, "USER_LOGIN", payload)
 
-    case payload do
-      %{"user" => %{"login" => login, "password" => password}} ->
-        case Accounts.authenticate(login, password) do
-          {:ok, user} ->
-            if Presence.online?(user.id) do
-              reply_error(request_id, "a user with this login is already authorized", socket)
-            else
-              case Presence.track_user(user.id) do
-                {:ok, _} ->
-                  socket = assign_user(socket, user)
-                  subscribe_to_personal_topic(user.id)
-                  broadcast_external_login(user)
+    with :allow <- check_ip_rate(socket, "USER_LOGIN") do
+      case payload do
+        %{"user" => %{"login" => login, "password" => password}} ->
+          case Accounts.authenticate(login, password) do
+            {:ok, user} ->
+              if Presence.online?(user.id) do
+                reply_error(request_id, "a user with this login is already authorized", socket)
+              else
+                case Presence.track_user(user.id) do
+                  {:ok, _} ->
+                    socket = assign_user(socket, user)
+                    subscribe_to_personal_topic(user.id)
+                    broadcast_external_login(user)
 
-                  response =
-                    Protocol.response(request_id, "USER_LOGIN", %{
-                      user: Protocol.user_payload(user)
-                    })
+                    response =
+                      Protocol.response(request_id, "USER_LOGIN", %{
+                        user: Protocol.user_payload(user)
+                      })
 
-                  Logger.log_outgoing(request_id, "USER_LOGIN", response)
-                  {:reply, {:ok, response}, socket}
+                    Logger.log_outgoing(request_id, "USER_LOGIN", response)
+                    {:reply, {:ok, response}, socket}
 
-                {:error, reason} ->
-                  reply_error(request_id, "presence error: #{inspect(reason)}", socket)
+                  {:error, reason} ->
+                    reply_error(request_id, "presence error: #{inspect(reason)}", socket)
+                end
               end
-            end
 
-          {:error, reason} when is_binary(reason) ->
-            reply_error(request_id, reason, socket)
+            {:error, reason} when is_binary(reason) ->
+              reply_error(request_id, reason, socket)
 
-          _ ->
-            reply_error(request_id, "authentication failed", socket)
-        end
+            _ ->
+              reply_error(request_id, "authentication failed", socket)
+          end
 
-      _ ->
-        reply_error(request_id, "incorrect USER_LOGIN parameters", socket)
+        _ ->
+          reply_error(request_id, "incorrect USER_LOGIN parameters", socket)
+      end
+    else
+      :deny ->
+        reply_error(request_id, "rate limit exceeded", socket)
     end
   end
 
@@ -83,6 +88,13 @@ defmodule FunChatWeb.Handlers.AuthHandler do
       user ->
         Presence.untrack_user(user.id)
         broadcast_external_logout(user)
+    end
+  end
+
+  defp check_ip_rate(socket, action) do
+    case socket.assigns[:client_ip] do
+      nil -> :allow
+      ip -> RateLimiter.check_ip_rate(ip, action)
     end
   end
 

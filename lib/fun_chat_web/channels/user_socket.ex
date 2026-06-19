@@ -4,20 +4,33 @@ defmodule FunChatWeb.UserSocket do
   channel "chat:*", FunChatWeb.ChatChannel
 
   @impl true
-  def connect(_params, socket, _connect_info) do
-    socket =
-      socket
-      |> assign(:current_user, nil)
-      |> assign(:authenticated, false)
+  def connect(_params, socket, connect_info) do
+    ip_str = extract_ip(connect_info)
 
-    {:ok, socket}
+    case FunChat.ConnectionLimiter.check_limit(ip_str) do
+      :allow ->
+        {_, ref} = FunChat.ConnectionLimiter.register_connection(ip_str)
+
+        socket =
+          socket
+          |> assign(:current_user, nil)
+          |> assign(:authenticated, false)
+          |> assign(:client_ip, ip_str)
+          |> assign(:connection_ref, ref)
+
+        {:ok, socket}
+
+      :deny ->
+        :error
+    end
   end
 
   @impl true
-  def id(socket) do
-    case socket.assigns[:current_user] do
-      nil -> nil
-      user -> "user_socket:#{user.id}"
-    end
+  def id(_socket), do: nil
+
+  defp extract_ip(%{peer_data: %{address: ip}}) do
+    ip |> :inet.ntoa() |> to_string()
   end
+
+  defp extract_ip(_), do: "127.0.0.1"
 end

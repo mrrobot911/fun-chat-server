@@ -1,20 +1,25 @@
 defmodule FunChatWeb.Handlers.MessageHandler do
   @moduledoc "Hanler MSG_SEND."
 
-  alias FunChat.{Chat, Accounts, Presence, Logger}
+  alias FunChat.{Chat, Accounts, Presence, Logger, RateLimiter}
   alias FunChatWeb.{Protocol, Guards.AuthGuard}
 
   def handle_send(payload, socket) do
     request_id = Map.get(payload, "id")
     Logger.log_incoming(request_id, "MSG_SEND", payload)
+    current_user = socket.assigns[:current_user]
 
     with :ok <- AuthGuard.require_auth(socket),
+         :allow <- check_user_rate(current_user.id, "MSG_SEND"),
          {:ok, message, from_user, to_user} <- send_message(socket, payload) do
       response = build_send_response(message, from_user, to_user, request_id)
       push_to_recipient(message, from_user, to_user)
       Logger.log_outgoing(request_id, "MSG_SEND", response)
       {:reply, {:ok, response}, socket}
     else
+      :deny ->
+        reply_error(request_id, "rate limit exceeded", socket)
+
       {:error, reason} when is_binary(reason) ->
         reply_error(request_id, reason, socket)
     end
@@ -79,8 +84,10 @@ defmodule FunChatWeb.Handlers.MessageHandler do
   def handle_from_user(payload, socket) do
     request_id = Map.get(payload, "id")
     Logger.log_incoming(request_id, "MSG_FROM_USER", payload)
+    current_user = socket.assigns[:current_user]
 
     with :ok <- AuthGuard.require_auth(socket),
+         :allow <- check_user_rate(current_user.id, "MSG_FROM_USER"),
          {:ok, other_user} <- resolve_other_user(payload),
          {:ok, messages} <- fetch_history(socket, other_user, payload) do
       response =
@@ -90,6 +97,9 @@ defmodule FunChatWeb.Handlers.MessageHandler do
       Logger.log_outgoing(request_id, "MSG_FROM_USER", response)
       {:reply, {:ok, response}, socket}
     else
+      :deny ->
+        reply_error(request_id, "rate limit exceeded", socket)
+
       {:error, reason} when is_binary(reason) ->
         reply_error(request_id, reason, socket)
     end
@@ -112,6 +122,10 @@ defmodule FunChatWeb.Handlers.MessageHandler do
       {:error, reason} when is_binary(reason) ->
         reply_error(request_id, reason, socket)
     end
+  end
+
+  defp check_user_rate(user_id, action) do
+    FunChat.RateLimiter.check_user_rate(user_id, action)
   end
 
   defp resolve_other_user(payload) do

@@ -86,6 +86,7 @@ defmodule FunChatWeb.ChatChannel do
   @impl true
   def terminate(_reason, socket) do
     AuthHandler.handle_terminate(socket)
+    FunChat.ConnectionLimiter.unregister_connection(socket.assigns[:connection_ref])
     :ok
   end
 end
