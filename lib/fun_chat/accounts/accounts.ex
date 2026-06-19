@@ -45,6 +45,19 @@ defmodule FunChat.Accounts do
     %User{}
     |> User.changeset(attrs)
     |> Repo.insert()
+    |> case do
+      {:ok, user} = result ->
+        :telemetry.execute(
+          [:fun_chat, :accounts, :create_user],
+          %{count: 1},
+          %{login: user.login}
+        )
+
+        result
+
+      {:error, _changeset} = error ->
+        error
+    end
   end
 
   def get_user_by_login(login) do

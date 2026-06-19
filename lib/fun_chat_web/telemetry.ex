@@ -79,15 +79,29 @@ defmodule FunChatWeb.Telemetry do
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.total_run_queue_lengths.total"),
       summary("vm.total_run_queue_lengths.cpu"),
-      summary("vm.total_run_queue_lengths.io")
+      summary("vm.total_run_queue_lengths.io"),
+
+      # Client Metrics
+      counter("fun_chat.accounts.create_user.count"),
+      counter("fun_chat.chat.send_message.count"),
+      last_value("fun_chat.connections.online_count")
     ]
   end
 
   defp periodic_measurements do
     [
-      # A module, function and arguments to be invoked periodically.
-      # This function must call :telemetry.execute/3 and a metric must be added above.
-      # {FunChatWeb, :count_users, []}
+      {__MODULE__, :measure_online_users, []}
     ]
+  end
+
+  def measure_online_users do
+    count =
+      try do
+        length(FunChat.Presence.online_user_ids())
+      rescue
+        _ -> 0
+      end
+
+    :telemetry.execute([:fun_chat, :connections], %{online_count: count}, %{})
   end
 end

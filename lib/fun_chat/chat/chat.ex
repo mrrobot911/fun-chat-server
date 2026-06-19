@@ -16,6 +16,19 @@ defmodule FunChat.Chat do
       datetime: System.system_time(:millisecond)
     })
     |> Repo.insert()
+    |> case do
+      {:ok, message} ->
+        :telemetry.execute(
+          [:fun_chat, :chat, :send_message],
+          %{count: 1},
+          %{from: from_user_id, to: to_user_id}
+        )
+
+        {:ok, message}
+
+      {:error, changeset} ->
+        {:error, changeset}
+    end
   end
 
   def get_history(current_user_id, other_user_id, cursor \\ nil, limit \\ 50) do
