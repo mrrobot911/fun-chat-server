@@ -2,6 +2,7 @@ defmodule FunChatWeb.ChatChannel do
   use FunChatWeb, :channel
 
   alias FunChatWeb.Handlers.AuthHandler
+  alias FunChatWeb.Protocol
 
   @impl true
   def join("chat:lobby", _payload, socket) do
@@ -36,6 +37,12 @@ defmodule FunChatWeb.ChatChannel do
     {:noreply, socket}
   end
 
+  @impl true
+  def handle_info({:personal_push, event, payload}, socket) do
+    push(socket, event, Protocol.push(event, payload))
+    {:noreply, socket}
+  end
+
   def handle_info(_msg, socket), do: {:noreply, socket}
 
   @impl true
@@ -44,6 +51,9 @@ defmodule FunChatWeb.ChatChannel do
 
   def handle_in("USER_LOGOUT", payload, socket),
     do: AuthHandler.handle_logout(payload, socket)
+
+  def handle_in("MSG_SEND", payload, socket),
+    do: FunChatWeb.Handlers.MessageHandler.handle_send(payload, socket)
 
   def handle_in(type, payload, socket) do
     request_id = Map.get(payload, "id")
