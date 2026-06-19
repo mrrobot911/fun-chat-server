@@ -23,6 +23,9 @@ defmodule FunChatWeb.Protocol do
   end
 
   def message_payload(message, from_login, to_login) do
+    from_login = from_login || fetch_login(message.from_user_id)
+    to_login = to_login || fetch_login(message.to_user_id)
+
     %{
       id: message.id,
       from: from_login,
@@ -36,5 +39,12 @@ defmodule FunChatWeb.Protocol do
         isDeleted: message.is_deleted
       }
     }
+  end
+
+  defp fetch_login(user_id) do
+    case FunChat.Accounts.get_user_by_id(user_id) do
+      nil -> nil
+      user -> user.login
+    end
   end
 end

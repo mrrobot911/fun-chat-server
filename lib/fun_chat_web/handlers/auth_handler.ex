@@ -70,6 +70,7 @@ defmodule FunChatWeb.Handlers.AuthHandler do
           socket
           |> assign(:current_user, nil)
           |> assign(:authenticated, false)
+
         {:reply, {:ok, response}, socket}
     end
   end

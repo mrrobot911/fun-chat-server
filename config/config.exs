@@ -25,12 +25,13 @@ config :phoenix, :json_library, Jason
 
 # Config Hammer
 config :hammer,
-  backend: {Hammer.Backend.ETS,
-    [
-      expiry_ms: :timer.hours(2),
-      cleanup_interval_ms: :timer.minutes(5)
-    ]
-  }
+  backend:
+    {Hammer.Backend.ETS,
+     [
+       expiry_ms: :timer.hours(2),
+       cleanup_interval_ms: :timer.minutes(5)
+     ]}
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

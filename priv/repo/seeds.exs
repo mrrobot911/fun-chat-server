@@ -12,6 +12,7 @@ for attrs <- users do
         {:ok, _} -> IO.puts("Created: #{attrs.login}")
         {:error, reason} -> IO.puts("Failed: #{inspect(reason)}")
       end
+
     _ ->
       IO.puts("Exists: #{attrs.login}")
   end

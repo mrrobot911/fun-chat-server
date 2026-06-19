@@ -17,9 +17,6 @@ defmodule FunChatWeb.Handlers.MessageHandler do
     else
       {:error, reason} when is_binary(reason) ->
         reply_error(request_id, reason, socket)
-
-      _ ->
-        reply_error(request_id, "incorrect MSG_SEND parameters", socket)
     end
   end
 
@@ -79,6 +76,97 @@ defmodule FunChatWeb.Handlers.MessageHandler do
     end
   end
 
+  def handle_from_user(payload, socket) do
+    request_id = Map.get(payload, "id")
+    Logger.log_incoming(request_id, "MSG_FROM_USER", payload)
+
+    with :ok <- AuthGuard.require_auth(socket),
+         {:ok, other_user} <- resolve_other_user(payload),
+         {:ok, messages} <- fetch_history(socket, other_user, payload) do
+      response =
+        build_history_response(messages, socket.assigns.current_user, other_user, request_id)
+
+      notify_senders_of_delivery(messages, socket.assigns.current_user)
+      Logger.log_outgoing(request_id, "MSG_FROM_USER", response)
+      {:reply, {:ok, response}, socket}
+    else
+      {:error, reason} when is_binary(reason) ->
+        reply_error(request_id, reason, socket)
+    end
+  end
+
+  defp resolve_other_user(payload) do
+    case payload do
+      %{"user" => other_login} ->
+        case Accounts.get_user_by_login(other_login) do
+          nil -> {:error, "user not found"}
+          user -> {:ok, user}
+        end
+
+      _ ->
+        {:error, "missing user field"}
+    end
+  end
+
+  defp fetch_history(socket, other_user, payload) do
+    current_user = socket.assigns.current_user
+    limit = Map.get(payload, "limit", 50)
+    cursor = Map.get(payload, "cursor")
+
+    parsed_cursor =
+      case cursor do
+        %{"datetime" => dt, "id" => id} -> {dt, id}
+        _ -> nil
+      end
+
+    {:ok, Chat.get_history(current_user.id, other_user.id, parsed_cursor, limit)}
+  end
+
+  defp build_history_response(messages, current_user, other_user, request_id) do
+    payloads =
+      Enum.map(messages, fn msg ->
+        {from_login, to_login} = resolve_logins(msg, current_user, other_user)
+        Protocol.message_payload(msg, from_login, to_login)
+      end)
+
+    next_cursor =
+      case List.last(messages) do
+        nil -> nil
+        msg -> %{datetime: msg.datetime, id: msg.id}
+      end
+
+    Protocol.response(request_id, "MSG_FROM_USER", %{
+      messages: payloads,
+      count: length(messages),
+      next_cursor: next_cursor
+    })
+  end
+
+  defp resolve_logins(msg, current_user, other_user) do
+    from_login =
+      if msg.from_user_id == current_user.id, do: current_user.login, else: other_user.login
+
+    to_login =
+      if msg.to_user_id == current_user.id, do: current_user.login, else: other_user.login
+
+    {from_login, to_login}
+  end
+
+  defp notify_senders_of_delivery(messages, current_user) do
+    messages
+    |> Enum.filter(fn msg ->
+      msg.to_user_id == current_user.id and msg.from_user_id != current_user.id
+    end)
+    |> Enum.each(fn msg ->
+      Phoenix.PubSub.broadcast(
+        FunChat.PubSub,
+        "user:#{msg.from_user_id}",
+        {:personal_push, "MSG_DELIVER",
+         %{message: Protocol.message_payload(%{msg | is_delivered: true}, nil, nil)}}
+      )
+    end)
+  end
+
   defp format_changeset(%Ecto.Changeset{errors: errors}) do
     errors
     |> Enum.map(fn {field, {msg, _}} -> "#{field}: #{msg}" end)
@@ -91,3 +179,4 @@ defmodule FunChatWeb.Handlers.MessageHandler do
     {:reply, {:ok, error}, socket}
   end
 end
+

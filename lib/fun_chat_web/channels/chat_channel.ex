@@ -55,6 +55,9 @@ defmodule FunChatWeb.ChatChannel do
   def handle_in("MSG_SEND", payload, socket),
     do: FunChatWeb.Handlers.MessageHandler.handle_send(payload, socket)
 
+  def handle_in("MSG_FROM_USER", payload, socket),
+    do: FunChatWeb.Handlers.MessageHandler.handle_from_user(payload, socket)
+
   def handle_in(type, payload, socket) do
     request_id = Map.get(payload, "id")
 

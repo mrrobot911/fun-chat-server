@@ -25,7 +25,7 @@ defmodule FunChat.Chat do
       from(m in Message,
         where:
           (m.from_user_id == ^current_user_id and m.to_user_id == ^other_user_id) or
-          (m.from_user_id == ^other_user_id and m.to_user_id == ^current_user_id),
+            (m.from_user_id == ^other_user_id and m.to_user_id == ^current_user_id),
         order_by: [asc: m.datetime, asc: m.id],
         limit: ^limit
       )
@@ -45,7 +45,7 @@ defmodule FunChat.Chat do
     from(m in query,
       where:
         m.datetime > ^cursor_datetime or
-        (m.datetime == ^cursor_datetime and m.id > ^cursor_id)
+          (m.datetime == ^cursor_datetime and m.id > ^cursor_id)
     )
   end
 
@@ -54,7 +54,7 @@ defmodule FunChat.Chat do
       from(m in Message,
         where:
           m.from_user_id == ^other_user_id and m.to_user_id == ^current_user_id and
-          m.is_delivered == false,
+            m.is_delivered == false,
         select: m.id
       )
 
@@ -70,7 +70,9 @@ defmodule FunChat.Chat do
 
   def mark_message_delivered(message_id) do
     case Repo.get(Message, message_id) do
-      nil -> {:error, :not_found}
+      nil ->
+        {:error, :not_found}
+
       message ->
         message
         |> Message.update_status_changeset(%{is_delivered: true})
@@ -82,7 +84,7 @@ defmodule FunChat.Chat do
     from(m in Message,
       where:
         m.from_user_id == ^other_user_id and m.to_user_id == ^current_user_id and
-        m.is_readed == false and m.is_deleted == false,
+          m.is_readed == false and m.is_deleted == false,
       select: count(m.id)
     )
     |> Repo.one()
@@ -90,34 +92,46 @@ defmodule FunChat.Chat do
 
   def mark_as_read(message_id, user_id) do
     case Repo.get(Message, message_id) do
-      nil -> {:error, "message not found"}
+      nil ->
+        {:error, "message not found"}
+
       %Message{to_user_id: ^user_id} = message ->
         message
         |> Message.update_status_changeset(%{is_readed: true})
         |> Repo.update()
-      _ -> {:error, "access denied"}
+
+      _ ->
+        {:error, "access denied"}
     end
   end
 
   def delete_message(message_id, user_id) do
     case Repo.get(Message, message_id) do
-      nil -> {:error, "message not found"}
+      nil ->
+        {:error, "message not found"}
+
       %Message{from_user_id: ^user_id} = message ->
         message
         |> Message.update_status_changeset(%{is_deleted: true})
         |> Repo.update()
-      _ -> {:error, "access denied"}
+
+      _ ->
+        {:error, "access denied"}
     end
   end
 
   def edit_message(message_id, new_text, user_id) do
     case Repo.get(Message, message_id) do
-      nil -> {:error, "message not found"}
+      nil ->
+        {:error, "message not found"}
+
       %Message{from_user_id: ^user_id} = message ->
         message
         |> Message.update_text_changeset(%{text: new_text, is_edited: true})
         |> Repo.update()
-      _ -> {:error, "access denied"}
+
+      _ ->
+        {:error, "access denied"}
     end
   end
 
