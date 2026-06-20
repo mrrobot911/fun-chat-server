@@ -15,7 +15,8 @@ defmodule FunChatWeb.Endpoint do
     websocket: [
       timeout: 45_000,
       compress: true,
-      max_frame_size: 1_048_576
+      max_frame_size: 1_048_576,
+      check_origin: false
     ],
     longpoll: false
 

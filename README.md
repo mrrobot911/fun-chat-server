@@ -29,6 +29,7 @@ mix phx.server
 WebSocket endpoint: ws://localhost:4000/socket
 **Структура проекта**
 
+```
 ├── config/                  # Конфигурация (dev, prod, test, runtime)
 ├── lib/
 │   ├── fun_chat/            # Контексты бизнес-логики (Accounts, Chat)
@@ -48,7 +49,7 @@ WebSocket endpoint: ws://localhost:4000/socket
 ├── Dockerfile
 ├── docker-compose.yaml
 └── AGENTS.md                # Правила разработки
-
+```
 ## Технологии
 
 Phoenix 1.8 + Bandit (сервер)
