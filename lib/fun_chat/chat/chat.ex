@@ -39,6 +39,7 @@ defmodule FunChat.Chat do
         where:
           (m.from_user_id == ^current_user_id and m.to_user_id == ^other_user_id) or
             (m.from_user_id == ^other_user_id and m.to_user_id == ^current_user_id),
+        where: m.is_deleted == false,
         order_by: [asc: m.datetime, asc: m.id],
         limit: ^limit
       )
@@ -98,6 +99,7 @@ defmodule FunChat.Chat do
       where:
         m.from_user_id == ^other_user_id and m.to_user_id == ^current_user_id and
           m.is_readed == false and m.is_deleted == false,
+      where: m.is_deleted == false,
       select: count(m.id)
     )
     |> Repo.one()
